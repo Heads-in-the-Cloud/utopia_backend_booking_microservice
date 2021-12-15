@@ -14,12 +14,12 @@ pipeline {
 
     stages {
 
-//         stage('aws_login') {
-//             steps {
-//                 echo 'Getting AWS credentials to pull from ECR...'
-//                 sh 'aws ecr-public get-login-password --region ${aws_region} | docker login --username AWS --password-stdin public.ecr.aws/${aws_ecr_repo}'
-//             }
-//         }
+        stage('aws_login') {
+            steps {
+                echo 'Getting AWS credentials to pull from ECR...'
+                sh 'aws ecr-public get-login-password --region ${aws_region} | docker login --username AWS --password-stdin public.ecr.aws/${aws_ecr_repo}'
+            }
+        }
 
         stage('Build') {
             steps {
@@ -33,9 +33,9 @@ pipeline {
                 echo 'Tagging images'
                 sh 'docker tag ${repo_name}:latest public.ecr.aws/${aws_ecr_repo}/${repo_name}:latest'
                 sh 'docker tag ${repo_name}:latest public.ecr.aws/${aws_ecr_repo}/${repo_name}:${commit}'
-//                 echo 'Pushing images'
-//                 sh 'docker push public.ecr.aws/${aws_ecr_repo}/${repo_name}:latest'
-//                 sh 'docker push public.ecr.aws/${aws_ecr_repo}/${repo_name}:${commit}'
+                echo 'Pushing images'
+                sh 'docker push public.ecr.aws/${aws_ecr_repo}/${repo_name}:latest'
+                sh 'docker push public.ecr.aws/${aws_ecr_repo}/${repo_name}:${commit}'
             }
         }
 
