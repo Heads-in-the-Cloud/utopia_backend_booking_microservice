@@ -9,7 +9,7 @@ pipeline {
         aws_region = 'us-west-2'
         aws_ecr_repo = '026390315914'
         repo_name = 'utopia_backend_bookings_microservice-sh'
-        repository_uri = "${aws_ecr_repo}.dkr.ecr.${aws_region}.amazonaws.com/${repo_name}"
+        repository_uri = "https://${aws_ecr_repo}.dkr.ecr.${aws_region}.amazonaws.com/${repo_name}"
 
     }
 
