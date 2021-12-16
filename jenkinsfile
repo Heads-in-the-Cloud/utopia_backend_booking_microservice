@@ -14,17 +14,11 @@ pipeline {
 
     stages {
 
-        stage('Build') {
-            steps {
-                echo 'Building Docker image...'
-                sh 'docker build -t ${repo_name} .'
-            }
-        }
-
-        stage('Push Images') {
+        stage('Build and Push Image') {
             steps {
                 script {
-                    docker.withRegistry('public.ecr.aws/${aws_ecr_repo}/${repo_name}', 'ecr:us-east-1:sh-ecr-access') {
+                    docker.withRegistry('https://public.ecr.aws/${aws_ecr_repo}/${repo_name}', 'ecr:us-east-1:sh-ecr-access') {
+                        image = docker.build('$repo_name')
                         image.push('latest')
                         image.push('${commit}')
                     }
