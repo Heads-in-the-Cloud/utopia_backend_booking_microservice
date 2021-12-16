@@ -9,6 +9,7 @@ pipeline {
         aws_region = 'us-east-1'
         aws_ecr_repo = 'b9s2q8s8'
         repo_name = 'utopia_backend_bookings_microservice'
+        repository_uri = "${aws_ecr_repo}.dkr.ecr.${aws_region}.amazonaws.com/${repo_name}"
 
     }
 
@@ -17,7 +18,7 @@ pipeline {
         stage('Build and Push Image') {
             steps {
                 script {
-                    docker.withRegistry('https://public.ecr.aws/${aws_ecr_repo}/${repo_name}', 'ecr:us-east-1:sh-ecr-access') {
+                    docker.withRegistry(repository_uri, 'ecr:us-east-1:sh-ecr-access') {
                         image = docker.build('$repo_name')
                         image.push('latest')
                         image.push('${commit}')
