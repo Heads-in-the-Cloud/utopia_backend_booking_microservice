@@ -6,9 +6,9 @@ pipeline {
     environment {
 
         commit = sh(returnStdout: true, script: "git rev-parse --short=8 HEAD").trim()
-        aws_region = 'us-east-1'
-        aws_ecr_repo = 'b9s2q8s8'
-        repo_name = 'utopia_backend_bookings_microservice'
+        aws_region = 'us-west-2'
+        aws_ecr_repo = '026390315914'
+        repo_name = 'utopia_backend_bookings_microservice-sh'
         repository_uri = "${aws_ecr_repo}.dkr.ecr.${aws_region}.amazonaws.com/${repo_name}"
 
     }
