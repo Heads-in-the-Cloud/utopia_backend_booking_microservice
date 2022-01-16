@@ -3,19 +3,17 @@
 # ########################################              Main             ###############################################
 # ########################################                               ###############################################
 # ######################################################################################################################
-import datetime
+from datetime import datetime
+import os
 from typing import List
 
 from fastapi import FastAPI, HTTPException
-from sqlalchemy.orm import Session
+from sqlmodel import Session, SQLModel, create_engine
 
-from .database import engine
-from . import (
-    models as m,
-    schemas as s
-)
+from .sqlmodels import *
 
-m.Base.metadata.create_all(bind=engine)
+SQLALCHEMY_DATABASE_URL = os.getenv('DB_ACCESS_URI') or "mysql+pymysql://root:root@127.0.0.1:6603/utopia"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 app = FastAPI()
 
@@ -25,6 +23,21 @@ app = FastAPI()
 # ########################################          API Routes           ###############################################
 # ########################################                               ###############################################
 # ######################################################################################################################
+
+
+# ------------------------------------------------
+#                 Startup DB Creation
+# ------------------------------------------------
+
+
+@app.on_event("startup")
+def on_startup():
+    SQLModel.metadata.create_all(engine)
+
+
+# ------------------------------------------------
+#                   Health Check
+# ------------------------------------------------
 
 
 @app.get("/health")
@@ -39,10 +52,10 @@ def health_check():
 # --------------------  Create  ------------------
 
 
-@app.post("/api/v2/bookings/", response_model=s.BookingFull)
-def create_booking(confirm_code: str):
+@app.post("/api/v2/bookings/", response_model=BookingRead)
+def create_booking(booking: BookingCreate):
     with Session(engine) as db:
-        db_booking = get_booking_by_conf(confirm_code)
+        db_booking = get_booking_by_conf(booking.confirmation_code)
 
         if db_booking:
             raise HTTPException(
@@ -50,14 +63,11 @@ def create_booking(confirm_code: str):
                 detail="A booking with that confirmation code already exists"
             )
 
-        booking = m.Booking(
-            confirmation_code=confirm_code,
-            is_active=True
-        )
+        new_booking = Booking.from_orm(booking)
 
-        db.add(booking)
+        db.add(new_booking)
         db.commit()
-        db.refresh(booking)
+        db.refresh(new_booking)
 
         return booking
 
@@ -65,12 +75,12 @@ def create_booking(confirm_code: str):
 # --------------------   Read   ------------------
 
 
-@app.get("/api/v2/bookings/{booking_id}", response_model=s.BookingFull)
+@app.get("/api/v2/bookings/{booking_id}", response_model=BookingRead)
 def get_booking(booking_id: int):
     with Session(engine) as db:
         db_booking = db                             \
-            .query(m.Booking)                       \
-            .filter(m.Booking.id == booking_id)    \
+            .query(Booking)                         \
+            .filter(Booking.id == booking_id)       \
             .first()
 
         if not db_booking:
@@ -82,12 +92,12 @@ def get_booking(booking_id: int):
         return db_booking
 
 
-@app.get("/api/v2/bookings/conf_code={conf_code}", response_model=s.BookingFull)
+@app.get("/api/v2/bookings/conf_code={conf_code}", response_model=BookingRead)
 def get_booking_by_conf(conf_code):
     with Session(engine) as db:
-        db_booking = db                                         \
-            .query(m.Booking)                                   \
-            .filter(m.Booking.confirmation_code == conf_code)   \
+        db_booking = db                                       \
+            .query(Booking)                                   \
+            .filter(Booking.confirmation_code == conf_code)   \
             .first()
 
         if not db_booking:
@@ -99,11 +109,11 @@ def get_booking_by_conf(conf_code):
         return db_booking
 
 
-@app.get("/api/v2/bookings/", response_model=List[s.BookingFull])
+@app.get("/api/v2/bookings/", response_model=List[BookingRead])
 def get_bookings():
     with Session(engine) as db:
-        db_bookings = db            \
-            .query(m.Booking)       \
+        db_bookings = db        \
+            .query(Booking)     \
             .all()
 
         if not db_bookings:
@@ -115,12 +125,12 @@ def get_bookings():
         return db_bookings
 
 
-@app.get("/api/v2/bookings/active/", response_model=List[s.BookingFull])
+@app.get("/api/v2/bookings/active/", response_model=List[BookingRead])
 def get_active_bookings():
     with Session(engine) as db:
-        active_bookings = db                \
-            .query(m.Booking)               \
-            .filter(m.Booking.is_active)    \
+        active_bookings = db              \
+            .query(Booking)               \
+            .filter(Booking.is_active)    \
             .all()
 
         if not active_bookings:
@@ -135,12 +145,12 @@ def get_active_bookings():
 # --------------------  Update  ------------------
 
 
-@app.patch("/api/v2/bookings/{booking_id}", response_model=s.BookingFull)
-def update_booking(booking_id: int, booking: s.BookingUpdate):
+@app.patch("/api/v2/bookings/{booking_id}", response_model=BookingRead)
+def update_booking(booking_id: int, booking: BookingUpdate):
     with Session(engine) as db:
-        db_booking = db                             \
-            .query(m.Booking)                       \
-            .filter(m.Booking.id == booking_id)    \
+        db_booking = db                          \
+            .query(Booking)                      \
+            .filter(Booking.id == booking_id)    \
             .first()
 
         if not db_booking:
@@ -166,9 +176,9 @@ def update_booking(booking_id: int, booking: s.BookingUpdate):
 @app.delete("/api/v2/bookings/{booking_id}")
 def delete_booking(booking_id: int):
     with Session(engine) as db:
-        db_booking = db                             \
-            .query(m.Booking)                       \
-            .filter(m.Booking.id == booking_id)    \
+        db_booking = db                         \
+            .query(Booking)                     \
+            .filter(Booking.id == booking_id)   \
             .first()
 
         if not db_booking:
@@ -190,19 +200,13 @@ def delete_booking(booking_id: int):
 # --------------------  Create  ------------------
 
 
-@app.post("/api/v2/booking_guests/", response_model=s.BookingGuest)
-def create_booking_guest(guest: s.BookingGuest):
+@app.post("/api/v2/booking_guests/", response_model=BookingGuestRead)
+def create_booking_guest(guest: BookingGuestCreate):
     with Session(engine) as db:
-        db_guest = db                                           \
-            .query(m.BookingGuest)                              \
-            .filter(m.BookingGuest.booking_id == guest.booking_id)    \
+        db_guest = db                                               \
+            .query(BookingGuest)                                    \
+            .filter(BookingGuest.booking_id == guest.booking_id)    \
             .first()
-
-        if not db_guest:
-            raise HTTPException(
-                status_code=404,
-                detail="Booking guest not found"
-            )
 
         if db_guest:
             raise HTTPException(
@@ -210,15 +214,11 @@ def create_booking_guest(guest: s.BookingGuest):
                 detail="Booking guest already exists with that booking id"
             )
 
-        guest = m.BookingGuest(
-            booking_id=guest.booking_id,
-            contact_email=guest.contact_email,
-            contact_phone=guest.contact_phone
-        )
+        new_guest = BookingGuest.from_orm(guest)
 
-        db.add(guest)
+        db.add(new_guest)
         db.commit()
-        db.refresh(guest)
+        db.refresh(new_guest)
 
         return guest
 
@@ -226,12 +226,12 @@ def create_booking_guest(guest: s.BookingGuest):
 # --------------------   Read   ------------------
 
 
-@app.get("/api/v2/booking_guests/{booking_id}", response_model=s.BookingGuest)
+@app.get("/api/v2/booking_guests/{booking_id}", response_model=BookingGuestRead)
 def get_booking_guest(booking_id: int):
     with Session(engine) as db:
         db_guest = db                                           \
-            .query(m.BookingGuest)                              \
-            .filter(m.BookingGuest.booking_id == booking_id)    \
+            .query(BookingGuest)                              \
+            .filter(BookingGuest.booking_id == booking_id)    \
             .first()
 
         if not db_guest:
@@ -246,12 +246,12 @@ def get_booking_guest(booking_id: int):
 # --------------------  Update  ------------------
 
 
-@app.patch("/api/v2/booking_guests/{booking_id}", response_model=s.BookingGuest)
-def update_booking_guest(booking_id: int, guest: s.BookingGuestUpdate):
+@app.patch("/api/v2/booking_guests/{booking_id}", response_model=BookingGuestRead)
+def update_booking_guest(booking_id: int, guest: BookingGuestUpdate):
     with Session(engine) as db:
         db_guest = db                                           \
-            .query(m.BookingGuest)                              \
-            .filter(m.BookingGuest.booking_id == booking_id)    \
+            .query(BookingGuest)                              \
+            .filter(BookingGuest.booking_id == booking_id)    \
             .first()
 
         if not db_guest:
@@ -274,12 +274,12 @@ def update_booking_guest(booking_id: int, guest: s.BookingGuestUpdate):
 # --------------------  Delete  ------------------
 
 
-@app.delete("/api/v2/booking_guests/{booking_id}", response_model=s.BookingGuest)
+@app.delete("/api/v2/booking_guests/{booking_id}", response_model=BookingGuestRead)
 def delete_booking_guest(booking_id: int):
     with Session(engine) as db:
         db_guest = db                                           \
-            .query(m.BookingGuest)                              \
-            .filter(m.BookingGuest.booking_id == booking_id)    \
+            .query(BookingGuest)                              \
+            .filter(BookingGuest.booking_id == booking_id)    \
             .first()
 
         if not db_guest:
@@ -301,12 +301,12 @@ def delete_booking_guest(booking_id: int):
 # --------------------  Create  ------------------
 
 
-@app.post("/api/v2/booking_payments/", response_model=s.BookingPayment)
-def create_booking_payment(payment: s.BookingPayment):
+@app.post("/api/v2/booking_payments/", response_model=BookingPaymentRead)
+def create_booking_payment(payment: BookingPaymentCreate):
     with Session(engine) as db:
         db_payment = db                                                     \
-            .query(m.BookingPayment)                                        \
-            .filter(m.BookingPayment.booking_id == payment.booking_id)      \
+            .query(BookingPayment)                                        \
+            .filter(BookingPayment.booking_id == payment.booking_id)      \
             .first()
 
         if db_payment:
@@ -315,11 +315,7 @@ def create_booking_payment(payment: s.BookingPayment):
                 detail="Payment with that booking id already"
             )
 
-        new_payment = m.BookingPayment(
-            booking_id=payment.booking_id,
-            stripe_id=payment.stripe_id,
-            refunded=payment.refunded
-        )
+        new_payment = BookingPayment.from_orm(payment)
 
         db.add(new_payment)
         db.commit()
@@ -331,12 +327,12 @@ def create_booking_payment(payment: s.BookingPayment):
 # --------------------   Read   ------------------
 
 
-@app.get("/api/v2/booking_payments/{booking_id}", response_model=s.BookingPayment)
+@app.get("/api/v2/booking_payments/{booking_id}", response_model=BookingPaymentRead)
 def get_booking_payment(booking_id: int):
     with Session(engine) as db:
         db_payment = db                                                 \
-                .query(m.BookingPayment)                                \
-                .filter(m.BookingPayment.booking_id == booking_id)      \
+                .query(BookingPayment)                                \
+                .filter(BookingPayment.booking_id == booking_id)      \
                 .first()
 
         if not db_payment:
@@ -346,12 +342,12 @@ def get_booking_payment(booking_id: int):
             )
 
 
-@app.get("/api/v2/booking_payments/stripe_id={stripe_id}", response_model=s.BookingPayment)
+@app.get("/api/v2/booking_payments/stripe_id={stripe_id}", response_model=BookingPaymentRead)
 def get_booking_payment(stripe_id: str):
     with Session(engine) as db:
         db_payment = db                                                 \
-                .query(m.BookingPayment)                                \
-                .filter(m.BookingPayment.stripe_id == stripe_id)      \
+                .query(BookingPayment)                                \
+                .filter(BookingPayment.stripe_id == stripe_id)      \
                 .first()
 
         if not db_payment:
@@ -361,11 +357,11 @@ def get_booking_payment(stripe_id: str):
             )
 
 
-@app.get("/api/v2/booking_payments/", response_model=List[s.BookingPayment])
+@app.get("/api/v2/booking_payments/", response_model=List[BookingPaymentRead])
 def get_booking_payments():
     with Session(engine) as db:
         payments = db                   \
-            .query(m.BookingPayment)    \
+            .query(BookingPayment)    \
             .all()
 
         if not payments:
@@ -377,12 +373,12 @@ def get_booking_payments():
         return payments
 
 
-@app.get("/api/v2/booking_payments/refunded", response_model=List[s.BookingPayment])
+@app.get("/api/v2/booking_payments/refunded", response_model=List[BookingPaymentRead])
 def get_refunded_booking_payments():
     with Session(engine) as db:
         refunded_payments = db                      \
-            .query(m.BookingPayment)                \
-            .filter(m.BookingPayment.refunded)      \
+            .query(BookingPayment)                \
+            .filter(BookingPayment.refunded)      \
             .all()
 
         if not refunded_payments:
@@ -394,12 +390,12 @@ def get_refunded_booking_payments():
         return refunded_payments
 
 
-@app.get("/api/v2/booking_payments/active", response_model=List[s.BookingPayment])
+@app.get("/api/v2/booking_payments/active", response_model=List[BookingPaymentRead])
 def get_refunded_booking_payments():
     with Session(engine) as db:
         active_payments = db                        \
-            .query(m.BookingPayment)                \
-            .filter(not m.BookingPayment.refunded)  \
+            .query(BookingPayment)                \
+            .filter(not BookingPayment.refunded)  \
             .all()
 
         if not active_payments:
@@ -414,12 +410,12 @@ def get_refunded_booking_payments():
 # --------------------  Update  ------------------
 
 
-@app.patch("/api/v2/booking_payments/{booking_id}", response_model=s.BookingPayment)
-def update_booking_payment(payment: s.BookingPaymentUpdate):
+@app.patch("/api/v2/booking_payments/{booking_id}", response_model=BookingPaymentRead)
+def update_booking_payment(payment: BookingPaymentUpdate):
     with Session(engine) as db:
         db_payment = db                                                         \
-                .query(m.BookingPayment)                                        \
-                .filter(m.BookingPayment.booking_id == payment.booking_id)      \
+                .query(BookingPayment)                                        \
+                .filter(BookingPayment.booking_id == payment.booking_id)      \
                 .first()
 
         if not db_payment:
@@ -446,8 +442,8 @@ def update_booking_payment(payment: s.BookingPaymentUpdate):
 def delete_booking_payment(booking_id: int):
     with Session(engine) as db:
         db_payment = db                                                 \
-                .query(m.BookingPayment)                                \
-                .filter(m.BookingPayment.booking_id == booking_id)      \
+                .query(BookingPayment)                                \
+                .filter(BookingPayment.booking_id == booking_id)      \
                 .first()
 
         if not db_payment:
@@ -469,12 +465,12 @@ def delete_booking_payment(booking_id: int):
 # --------------------  Create  ------------------
 
 
-@app.post("/api/v2/passengers/", response_model=s.PassengerFull)
-def create_passenger(passenger: s.Passenger):
+@app.post("/api/v2/passengers/", response_model=PassengerRead)
+def create_passenger(passenger: Passenger):
     with Session(engine) as db:
         db_passenger = db \
-            .query(m.Passenger) \
-            .filter(m.Passenger.booking_id == passenger.booking_id) \
+            .query(Passenger) \
+            .filter(Passenger.booking_id == passenger.booking_id) \
             .first()
 
         if db_passenger:
@@ -483,31 +479,24 @@ def create_passenger(passenger: s.Passenger):
                 detail="Passenger with that booking id already exists"
             )
 
-        new_passenger = m.Passenger(
-            passenger.booking_id,
-            passenger.given_name,
-            passenger.family_name,
-            passenger.dob,
-            passenger.gender,
-            passenger.address
-        )
+        new_passenger = Passenger.from_orm(passenger)
 
         db.add(new_passenger)
         db.commit()
         db.refresh(new_passenger)
 
-        return new_passenger
+        return passenger
 
 
 # --------------------   Read   ------------------
 
 
-@app.get("/api/v2/passengers/{passenger_id}", response_model=s.PassengerFull)
+@app.get("/api/v2/passengers/{passenger_id}", response_model=PassengerRead)
 def get_passenger(passenger_id: int):
     with Session(engine) as db:
         db_passenger = db \
-            .query(m.Passenger) \
-            .filter(m.Passenger.id == passenger_id) \
+            .query(Passenger) \
+            .filter(Passenger.id == passenger_id) \
             .first()
 
         if not db_passenger:
@@ -519,11 +508,11 @@ def get_passenger(passenger_id: int):
         return db_passenger
 
 
-@app.get("/api/v2/passengers/", response_model=List[s.PassengerFull])
+@app.get("/api/v2/passengers/", response_model=List[PassengerRead])
 def get_passengers():
     with Session(engine) as db:
         passengers = db             \
-            .query(m.Passenger)     \
+            .query(Passenger)     \
             .all()
 
         if not passengers:
@@ -535,12 +524,12 @@ def get_passengers():
         return passengers
 
 
-@app.get("/api/v2/passengers/booking_id={booking_id}", response_model=List[s.PassengerFull])
+@app.get("/api/v2/passengers/booking_id={booking_id}", response_model=List[PassengerRead])
 def get_passengers_by_family(booking_id: int):
     with Session(engine) as db:
         passengers = db                                         \
-            .query(m.Passenger)                                 \
-            .filter(m.Passenger.booking_id == booking_id)       \
+            .query(Passenger)                                 \
+            .filter(Passenger.booking_id == booking_id)       \
             .all()
 
         if not passengers:
@@ -552,12 +541,12 @@ def get_passengers_by_family(booking_id: int):
         return passengers
 
 
-@app.get("/api/v2/passengers/family={family_name}", response_model=List[s.PassengerFull])
+@app.get("/api/v2/passengers/family={family_name}", response_model=List[PassengerRead])
 def get_passengers_by_family(family_name: str):
     with Session(engine) as db:
-        family = db                                             \
-            .query(m.Passenger)                                 \
-            .filter(m.Passenger.family_name == family_name)     \
+        family = db                                           \
+            .query(Passenger)                                 \
+            .filter(Passenger.family_name == family_name)     \
             .all()
 
         if not family:
@@ -569,12 +558,12 @@ def get_passengers_by_family(family_name: str):
         return family
 
 
-@app.get("/api/v2/passengers/family={family_name}", response_model=List[s.PassengerFull])
+@app.get("/api/v2/passengers/family={family_name}", response_model=List[PassengerRead])
 def get_passengers_by_dob(dob: datetime.date):
     with Session(engine) as db:
-        passengers = db                                     \
-            .query(m.Passenger)                             \
-            .filter(m.Passenger.dob == dob)                 \
+        passengers = db                                   \
+            .query(Passenger)                             \
+            .filter(Passenger.dob == dob)                 \
             .all()
 
         if not passengers:
@@ -589,12 +578,12 @@ def get_passengers_by_dob(dob: datetime.date):
 # --------------------  Update  ------------------
 
 
-@app.get("/api/v2/passengers/{passenger_id}", response_model=s.PassengerFull)
-def update_passenger(passenger_id: int, passenger: s.PassengerUpdate):
+@app.get("/api/v2/passengers/{passenger_id}", response_model=PassengerRead)
+def update_passenger(passenger_id: int, passenger: PassengerUpdate):
     with Session(engine) as db:
         db_passenger = db \
-            .query(m.Passenger) \
-            .filter(m.Passenger.id == passenger_id) \
+            .query(Passenger) \
+            .filter(Passenger.id == passenger_id) \
             .first()
 
         if not db_passenger:
@@ -621,8 +610,8 @@ def update_passenger(passenger_id: int, passenger: s.PassengerUpdate):
 def delete_passenger(passenger_id: int):
     with Session(engine) as db:
         db_passenger = db \
-            .query(m.Passenger) \
-            .filter(m.Passenger.id == passenger_id) \
+            .query(Passenger) \
+            .filter(Passenger.id == passenger_id) \
             .first()
 
         if not db_passenger:
