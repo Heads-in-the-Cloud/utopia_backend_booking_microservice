@@ -6,20 +6,35 @@ pipeline {
     environment {
         commit = sh(returnStdout: true, script: "git rev-parse --short=8 HEAD").trim()
 
-        aws_region = "${region}"
-        aws_ecr_account = '${ORG_ACCOUNT_NUM}'
-        org_ecr_uri = '${aws_ecr_account}.dkr.ecr.${aws_region}.amazonaws.com'
+        org_ecr_uri = '${ORG_ACCOUNT_NUM}.dkr.ecr.${region}.amazonaws.com'
 
-        repo_name = 'utopia_backend_bookings_fastapi'
+        repo_name = 'utopia_backend_bookings_fastapi-SH'
         scanner_home = tool "${SonarQubeScanner}";
     }
 
     stages {
 
-        stage('aws_login') {
+        stage('AWS Login') {
             steps {
                 echo 'Getting AWS credentials to push to Org ECR...'
                 sh 'aws ecr get-login-password --region ${aws_region} | docker login --username AWS --password-stdin ${org_ecr_uri}'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps{
+                echo 'Beginning SonarQube analysis...'
+                withSonarQubeEnv(installationName: 'SonarQube') {
+                    sh "${scanner_home}/bin/sonar-scanner"
+                }
+            }
+        }
+
+        stage('Testing') {
+            agent {dockerfile true}
+            steps {
+                echo 'Running Python unittests...'
+                sh 'pytest api_microservice/test_runner.py'
             }
         }
 
@@ -30,14 +45,12 @@ pipeline {
             }
         }
 
-        stage('Push Images') {
+        stage('Push') {
             steps {
-                echo 'Tagging images'
-                sh 'docker tag ${repo_name}:latest ${docker_user}/${repo_name}:latest'
+                echo 'Tagging images...'
                 sh 'docker tag ${repo_name}:latest ${org_ecr_uri}/${repo_name}:latest'
                 sh 'docker tag ${repo_name}:latest ${org_ecr_uri}/${repo_name}:${commit}'
-                echo 'Pushing images'
-                sh 'docker push ${docker_user}/${repo_name}:latest'
+                echo 'Pushing images...'
                 sh 'docker push ${org_ecr_uri}/${repo_name}:latest'
                 sh 'docker push ${org_ecr_uri}/${repo_name}:${commit}'
             }
@@ -47,7 +60,6 @@ pipeline {
             steps {
                 echo 'Removing images'
                 sh 'docker images rm -f ${repo_name}:latest'
-                sh 'docker images rm -f ${docker_user}/${repo_name}:latest'
                 sh 'docker images rm -f ${org_ecr_uri}/${repo_name}:latest'
                 sh 'docker images rm -f ${org_ecr_uri}/${repo_name}:${commit}'
             }
