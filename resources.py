@@ -12,6 +12,7 @@ from schemas import *
 #                   Booking
 # ------------------------------------------------
 
+
 class BookingResource(Resource):
     def get(self, booking_id):
         booking = Booking.query.get_or_404(booking_id)
@@ -240,38 +241,38 @@ api = Api()
 #                   Booking
 # ------------------------------------------------
 
-api.add_resource(BookingResource, '/api/booking/<booking_id>')
-api.add_resource(BookingListResource, '/api/booking/all')
-api.add_resource(BookingCreationResource, '/api/booking/create')
-api.add_resource(BookingPatchResource, '/api/booking/update/<booking_id>')
-api.add_resource(BookingDeleteResource, '/api/booking/delete/<booking_id>')
+api.add_resource(BookingResource, '/api/v1/bookings/<booking_id>')
+api.add_resource(BookingListResource, '/api/v1/bookings/')
+api.add_resource(BookingCreationResource, '/api/v1/bookings/create/')
+api.add_resource(BookingPatchResource, '/api/v1/bookings/update/')
+api.add_resource(BookingDeleteResource, '/api/v1/bookings/delete/')
 
 # ------------------------------------------------
 #                   BookingGuest
 # ------------------------------------------------
 
-api.add_resource(BookingGuestResource, '/api/booking_guest/<booking_id>')
-api.add_resource(BookingGuestListResource, '/api/booking_guest/all')
-api.add_resource(BookingGuestCreationResource, '/api/booking_guest/create')
-api.add_resource(BookingGuestPatchResource, '/api/booking_guest/update/<booking_id>')
-api.add_resource(BookingGuestDeleteResource, '/api/booking_guest/delete/<booking_id>')
+api.add_resource(BookingGuestResource, '/api/v1/booking_guests/<booking_id>')
+api.add_resource(BookingGuestListResource, '/api/v1/booking_guests/')
+api.add_resource(BookingGuestCreationResource, '/api/v1/booking_guests/create/')
+api.add_resource(BookingGuestPatchResource, '/api/v1/booking_guests/update/')
+api.add_resource(BookingGuestDeleteResource, '/api/v1/booking_guests/delete/')
 
 # ------------------------------------------------
 #                   BookingPayment
 # ------------------------------------------------
 
-api.add_resource(BookingPaymentResource, '/api/booking_payment/<booking_id>')
-api.add_resource(BookingPaymentListResource, '/api/booking_payment/all')
-api.add_resource(BookingPaymentCreationResource, '/api/booking_payment/create')
-api.add_resource(BookingPaymentPatchResource, '/api/booking_payment/update/<booking_id>')
-api.add_resource(BookingPaymentDeleteResource, '/api/booking_payment/delete/<booking_id>')
+api.add_resource(BookingPaymentResource, '/api/v1/booking_payments/<booking_id>')
+api.add_resource(BookingPaymentListResource, '/api/v1/booking_payments/')
+api.add_resource(BookingPaymentCreationResource, '/api/v1/booking_payments/create/')
+api.add_resource(BookingPaymentPatchResource, '/api/v1/booking_payments/update/')
+api.add_resource(BookingPaymentDeleteResource, '/api/v1/booking_payments/delete/')
 
 # ------------------------------------------------
 #                    Passenger
 # ------------------------------------------------
 
-api.add_resource(PassengerResource, '/api/passenger/<passenger_id>')
-api.add_resource(PassengerListResource, '/api/passenger/all')
-api.add_resource(PassengerCreationResource, '/api/passenger/create')
-api.add_resource(PassengerPatchResource, '/api/passenger/update/<passenger_id>')
-api.add_resource(PassengerDeleteResource, '/api/passenger/delete/<passenger_id>')
+api.add_resource(PassengerResource, '/api/v1/passengers/<passenger_id>')
+api.add_resource(PassengerListResource, '/api/v1/passengers/')
+api.add_resource(PassengerCreationResource, '/api/v1/passengers/create/')
+api.add_resource(PassengerPatchResource, '/api/v1/passengers/update/')
+api.add_resource(PassengerDeleteResource, '/api/v1/passengers/delete/')
