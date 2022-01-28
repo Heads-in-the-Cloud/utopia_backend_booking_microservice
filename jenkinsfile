@@ -34,8 +34,9 @@ pipeline {
             steps {
                 withPythonEnv('python3') {
                     echo 'Running Python unittests...'
-                    sh 'pip install pytest'
-                    sh 'pytest api_microservice/test_runner.py'
+                    dir("api_microservice") {
+                        sh 'pytest test_runner.py'
+                    }
                 }
             }
         }
