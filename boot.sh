@@ -9,8 +9,8 @@ if [ ! -e "$SECRET_KEY" ]; then
   SECRET_KEY="ThisIsNotAVerySafeSecretKeyString"
   echo " ├─ SECRET_KEY set to default value..."
 fi
-# Then check if the SECRET_FILE env var points to a file, in which case read it in as the variable value.
-if [ -f "$SECRET_KEY" ]; then
+# Then check if the SECRET_FILE env var points to a readable file, in which case read it in as the variable value.
+if [ -r "$SECRET_KEY" ]; then
   echo " ├─ SECRET_KEY env var was found set to a file, now reading..."
   SECRET_KEY="$(cat "$SECRET_KEY")"
   echo " ├─ file contents read into SECRET_KEY variable..."
@@ -34,13 +34,13 @@ if [ ! -e "$DB_ACCESS_URI" ]; then
   DB_ACCESS_URI="sqlite:///./sql_app.db"
   echo " ├─ DB_ACCESS_URI set to default value..."
 fi
-# Then check if the SECRET_FILE env var points to a file, in which case read it in as the variable value.
-if [ -f "$DB_ACCESS_URI" ]; then
+# Then check if the SECRET_FILE env var points to a readable file, in which case read it in as the variable value.
+if [ -r "$DB_ACCESS_URI" ]; then
   echo " ├─ DB_ACCESS_URI env var was found set to a file, now reading..."
   DB_ACCESS_URI="$(cat "$DB_ACCESS_URI")"
   echo " ├─ file contents read into DB_ACCESS_URI variable..."
 fi
-# Next (whether file or not) check if the env var is empty, if so set to default value.
+# Next check if the env var is empty, if so set to default value.
 if [ -z "$DB_ACCESS_URI" ]; then
   echo " ├─ DB_ACCESS_URI env var was set to an empty string, falling back to default (i.e. localhost:6603) value..."
   DB_ACCESS_URI="sqlite:///./sql_app.db"
